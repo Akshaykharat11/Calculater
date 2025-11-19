@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Full-Feature Calculator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* small extra styles */
+    :root { --kbd-bg: rgba(255,255,255,0.03); }
+    .btn:active { transform: translateY(1px); }
+    .display { font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body class="bg-gray-900 min-h-screen flex items-center justify-center p-6 text-white">
+  <div class="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-6">
+    <!-- Calculator -->
+    <div class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h1 class="text-xl font-semibold">Calculator</h1>
+        <div class="space-x-2">
+          <button id="toggleTheme" class="px-3 py-1 rounded bg-gray-700/40 text-sm">Toggle Theme</button>
+          <button id="clearMemory" class="px-3 py-1 rounded bg-gray-700/40 text-sm">MC</button>
+        </div>
+      </div>
+
+      <div class="rounded-xl bg-black/60 p-4 mb-4">
+        <div id="expression" class="text-gray-400 text-sm break-words min-h-[1.2rem]"></div>
+        <div id="output" class="display text-right text-3xl font-medium mt-2">0</div>
+      </div>
+
+      <div class="grid grid-cols-4 gap-3">
+        <!-- Row 1 -->
+        <button class="btn px-3 py-3 rounded-xl bg-gray-700 hover:bg-gray-600" data-action="all-clear">AC</button>
+        <button class="btn px-3 py-3 rounded-xl bg-gray-700 hover:bg-gray-600" data-action="clear">C</button>
+        <button class="btn px-3 py-3 rounded-xl bg-gray-700 hover:bg-gray-600" data-action="back">⌫</button>
+        <button class="btn px-3 py-3 rounded-xl bg-orange-600 hover:bg-orange-500" data-value="/">÷</button>
+
+        <!-- Row 2 -->
+        <button class="btn px-3 py-3 rounded-xl bg-gray-700" data-action="mem-store">M+</button>
+        <button class="btn px-3 py-3 rounded-xl bg-gray-700" data-action="mem-sub">M-</button>
+        <button class="btn px-3 py-3 rounded-xl bg-gray-700" data-action="mem-recall">MR</button>
+        <button class="btn px-3 py-3 rounded-xl bg-orange-600" data-value="*">×</button>
+
+        <!-- Row 3 -->
+        <button class="btn px-3 py-3 rounded-xl bg-gray-700" data-value="7">7</button>
+        <button class="btn px-3 py-3 rounded-xl bg-gray-700" data-value="8">8</button>
+        <button class="btn px-3 py-3 rounded-xl bg-gray-700" data-value="9">9</button>
+        <button class="btn px-3 py-3 rounded-xl bg-orange-600" data-value="-">−</button>
+
+        <!-- Row 4 -->
+        <button class="btn px-3 py-3 rounded-xl bg-gray-700" data-value="4">4</button>
+        <button class="btn px-3 py-3 rounded-xl bg-gray-700" data-value="5">5</button>
+        <button class="btn px-3 py-3 rounded-xl bg-gray-700" data-value="6">6</button>
+        <button class="btn px-3 py-3 rounded-xl bg-orange-600" data-value="+">+</button>
+
+        <!-- Row 5 -->
+        <button class="btn px-3 py-3 rounded-xl bg-gray-700" data-value="1">1</button>
+        <button class="btn px-3 py-3 rounded-xl bg-gray-700" data-value="2">2</button>
+        <button class="btn px-3 py-3 rounded-xl bg-gray-700" data-value="3">3</button>
+        <button class="btn px-3 py-3 row-span-2 rounded-xl bg-blue-600 flex items-center justify-center" data-action="equals">=</button>
+
+        <!-- Row 6 -->
+        <button class="btn px-3 py-3 rounded-xl bg-gray-700 col-span-2" data-value="0">0</button>
+        <button class="btn px-3 py-3 rounded-xl bg-gray-700" data-value=".">.</button>
+      </div>
+
+      <div class="mt-4 grid grid-cols-3 gap-2 text-sm">
+        <button class="px-3 py-2 rounded bg-gray-700" data-action="paren">( )</button>
+        <button class="px-3 py-2 rounded bg-gray-700" data-action="percent">% </button>
+        <button class="px-3 py-2 rounded bg-gray-700" data-action="sqrt">√</button>
+      </div>
+
+      <div class="mt-4 text-xs text-gray-400">Keyboard: numbers, + - * /, Enter = evaluate, Backspace, Esc = AC</div>
+    </div>
+
+    <!-- Right column: history & settings -->
+    <div class="bg-gray-800 rounded-2xl p-6 shadow-inner">
+      <h2 class="text-lg font-semibold mb-3">History</h2>
+      <div id="history" class="h-96 overflow-auto bg-black/30 rounded p-3 space-y-2"></div>
+
+      <div class="mt-4">
+        <button id="exportHistory" class="px-3 py-2 rounded bg-green-600 w-full">Export History (.txt)</button>
+        <button id="clearHistory" class="mt-2 px-3 py-2 rounded bg-red-600 w-full">Clear History</button>
+      </div>
+
+      <div class="mt-6">
+        <h3 class="font-medium mb-2">Options</h3>
+        <label class="flex items-center gap-2"><input id="useRadians" type="checkbox" class="mr-2">Use radians (for trig if added)</label>
+      </div>
+
+      <div class="mt-6 text-sm text-gray-400">Features: Basic arithmetic, parentheses, decimal, percent, sqrt, memory (M+, M-, MR, MC), keyboard input, history saved in localStorage.</div>
+    </div>
+  </div>
+
+  <script>
+    // Simple full-feature calculator logic
+    (function(){
+      const exprEl = document.getElementById('expression');
+      const outEl = document.getElementById('output');
+      const historyEl = document.getElementById('history');
+
+      let expression = '';
+      let memory = 0;
+      const HISTORY_KEY = 'calc_history_v1';
+
+      function render() {
+        exprEl.textContent = expression || '';
+        outEl.textContent = expression ? expression : '0';
+        renderHistory();
+      }
+
+      function pushHistory(item){
+        const list = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+        list.unshift(item);
+        if(list.length>100) list.pop();
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(list));
+        renderHistory();
+      }
+
+      function renderHistory(){
+        const list = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+        historyEl.innerHTML = list.map(i=>`<div class="p-2 bg-black/20 rounded">${escapeHtml(i.expr)} = <span class="font-semibold">${escapeHtml(i.result)}</span></div>`).join('') || '<div class="text-gray-500">No history yet</div>';
+      }
+
+      function escapeHtml(s){ return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+
+      // Evaluate expression safely-ish for calculator usage
+      function evaluateExpression(exp){
+        try{
+          // Replace unicode operators to JS-friendly ones
+          exp = exp.replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-');
+          // handle percent: convert x% to (x/100)
+          exp = exp.replace(/(\d+(?:\.\d+)?)%/g, '($1/100)');
+          // block any letters to prevent arbitrary code (basic safety)
+          if(/[a-zA-Z]/.test(exp)) throw new Error('Invalid characters');
+          // eval using Function
+          const fn = new Function('return ('+exp+')');
+          const res = fn();
+          if(typeof res === 'number' && isFinite(res)) return res;
+          throw new Error('Invalid result');
+        }catch(e){
+          return 'Error';
+        }
+      }
+
+      // Button handling
+      document.querySelectorAll('.btn').forEach(b=>{
+        b.addEventListener('click', ()=>{
+          const val = b.dataset.value;
+          const action = b.dataset.action;
+          if(val) appendToExpression(val);
+          if(action) handleAction(action);
+        });
+      });
+
+      document.getElementById('toggleTheme').addEventListener('click', ()=>{
+        document.documentElement.classList.toggle('light');
+        document.body.classList.toggle('bg-white');
+        document.body.classList.toggle('text-black');
+      });
+
+      document.getElementById('clearMemory').addEventListener('click', ()=>{ memory = 0; alert('Memory cleared'); });
+      document.getElementById('exportHistory').addEventListener('click', ()=>{
+        const data = localStorage.getItem(HISTORY_KEY) || '[]';
+        const blob = new Blob([data], {type: 'text/plain'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'calculator-history.txt'; a.click(); URL.revokeObjectURL(url);
+      });
+      document.getElementById('clearHistory').addEventListener('click', ()=>{ localStorage.removeItem(HISTORY_KEY); renderHistory(); });
+
+      function appendToExpression(v){
+        // prevent two operators in a row (simple rule)
+        if(/^[+\-*/.]$/.test(v) && expression.slice(-1) && /[+\-*/.]$/.test(expression.slice(-1)) ) return;
+        expression += v;
+        render();
+      }
+
+      function handleAction(act){
+        if(act === 'all-clear'){ expression = ''; render(); }
+        if(act === 'clear'){ expression = expression.slice(0, -1); render(); }
+        if(act === 'back'){ expression = expression.slice(0, -1); render(); }
+        if(act === 'equals'){
+          const result = evaluateExpression(expression);
+          pushHistory({expr: expression, result: result});
+          expression = String(result);
+          render();
+        }
+        if(act === 'paren'){
+          // smart paren: add '(' if count open<=close else add ')'
+          const open = (expression.match(/\(/g)||[]).length;
+          const close = (expression.match(/\)/g)||[]).length;
+          expression += (open<=close) ? '(' : ')'; render();
+        }
+        if(act === 'percent'){ appendToExpression('%'); }
+        if(act === 'sqrt'){
+          // compute sqrt of current expression or last number
+          const val = evaluateExpression(expression);
+          if(val === 'Error') { expression = 'Error'; render(); return; }
+          const res = Math.sqrt(Number(val));
+          pushHistory({expr: `√(${val})`, result: res});
+          expression = String(res); render();
+        }
+        if(act === 'mem-store'){ const v = evaluateExpression(expression); if(v !== 'Error') { memory += Number(v); alert('Added to memory'); } }
+        if(act === 'mem-sub'){ const v = evaluateExpression(expression); if(v !== 'Error') { memory -= Number(v); alert('Subtracted from memory'); } }
+        if(act === 'mem-recall'){ expression += String(memory); render(); }
+      }
+
+      // Keyboard support
+      window.addEventListener('keydown', (e)=>{
+        if(e.key >= '0' && e.key <= '9') appendToExpression(e.key);
+        if(['+','-','*','/','.'].includes(e.key)) appendToExpression(e.key);
+        if(e.key === 'Enter') { handleAction('equals'); }
+        if(e.key === 'Backspace') { handleAction('back'); }
+        if(e.key === 'Escape') { handleAction('all-clear'); }
+      });
+
+      // load history on start
+      render();
+    })();
+  </script>
+</body>
+</html>
